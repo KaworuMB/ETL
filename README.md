@@ -100,7 +100,6 @@ To reduce storage costs, rarely accessed or old processed data is moved to **Ama
 
 ---
 
-## 📂 Project Structure
 
 
 
