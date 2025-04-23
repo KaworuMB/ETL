@@ -12,11 +12,11 @@ ETL-пайплайн на AWS
 
 Папка /processed/ хранит обработанные данные в формате Parquet
 
-2. AWS Glue Crawler
+2. AWS glue crawler
 
 Сканирует содержимое S3 /raw/ и автоматически создаёт таблицу raw в базе данных raw_database. Это позволяет Glue Job понять структуру данных без необходимости вручную описывать схему.
 
-3. AWS Glue Job
+3. AWS glue job
 
 Обрабатывает данные следующим образом:
 
@@ -44,12 +44,12 @@ ETL-пайплайн на AWS
 Выполняется запрос, например:
 
 sql
-Копировать
-Редактировать
 SELECT country, COUNT(*) AS total_transactions
 FROM processed
 GROUP BY country
 ORDER BY total_transactions DESC;
+
+
 Проблемы и их решения
 RESOURCE_NOT_FOUND_ERROR — возникает, если таблица raw ещё не создана. Решение: запустить Glue Crawler.
 
