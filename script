@@ -1,0 +1,38 @@
+import sys
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.dynamicframe import DynamicFrame
+from awsglue.job import Job
+
+args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args['JOB_NAME'], args)
+
+# Загрузка данных из таблицы
+source_data = glueContext.create_dynamic_frame.from_catalog(
+    database="raw_database", 
+    table_name="raw"
+)
+
+# Трансформация: добавим столбец TotalCost = CostPerItem * NumberOfItemPurchased
+from pyspark.sql.functions import col
+df = source_data.toDF()
+df = df.withColumn("totalcost", col("costperitem") * col("numberofitemspurchased"))
+
+# Возврат в DynamicFrame
+transformed_data = DynamicFrame.fromDF(df, glueContext, "transformed_data")
+
+# Сохранение в формате Parquet в S3
+glueContext.write_dynamic_frame.from_options(
+    frame=transformed_data,
+    connection_type="s3",
+    connection_options={"path": "s3://my-etl-pipeline-bucket-512/processed/"},
+    format="parquet"
+)
+
+job.commit()
