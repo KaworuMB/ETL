@@ -1,4 +1,4 @@
-# ETL
+![image](https://github.com/user-attachments/assets/a9cc09dc-31fe-4352-8eb4-dcfbcc03e769)# ETL
 
 This project implements an ETL (Extract, Transform, Load) process using AWS services for automatic processing and analysis of transaction data.
 
@@ -14,7 +14,8 @@ The pipeline loads raw data (CSV), cleans and transforms it using AWS Glue, stor
 - **AWS Glue Crawler** — Automatically infers schema and creates a table in the Glue Data Catalog  
 - **AWS Glue Job** — Cleans and transforms the data  
 - **Amazon Athena** — Executes SQL queries on the processed data  
-- **IAM Role** — Grants Glue and Athena access to required S3 buckets  
+- **IAM Role** — Grants Glue and Athena access to required S3 buckets
+- **S3 Glacier** — Storing unused data
 
 ---
 
