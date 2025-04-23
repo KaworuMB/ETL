@@ -1,65 +1,106 @@
 # ETL
-ETL-пайплайн на AWS
-Цель проекта
-Проект реализует автоматизированный ETL-процесс с использованием облачных сервисов Amazon Web Services. Основная задача — извлекать транзакционные данные в формате CSV, преобразовывать их в удобный формат Parquet, сохранять в отдельное хранилище и делать доступными для аналитики через SQL-запросы в Amazon Athena.
 
-Компоненты архитектуры
-1. Amazon S3
+This project implements an ETL (Extract, Transform, Load) process using AWS services for automatic processing and analysis of transaction data.
 
-Используется как основное хранилище данных:
+## 🧩 Project Overview
 
-Папка /raw/ содержит исходные CSV-файлы
+The pipeline loads raw data (CSV), cleans and transforms it using AWS Glue, stores it in Parquet format in Amazon S3, and enables querying through Amazon Athena.
 
-Папка /processed/ хранит обработанные данные в формате Parquet
+---
 
-2. AWS glue crawler
+## 🚀 Architecture
 
-Сканирует содержимое S3 /raw/ и автоматически создаёт таблицу raw в базе данных raw_database. Это позволяет Glue Job понять структуру данных без необходимости вручную описывать схему.
+- **Amazon S3** — Storage for raw and processed data  
+- **AWS Glue Crawler** — Automatically infers schema and creates a table in the Glue Data Catalog  
+- **AWS Glue Job** — Cleans and transforms the data  
+- **Amazon Athena** — Executes SQL queries on the processed data  
+- **IAM Role** — Grants Glue and Athena access to required S3 buckets  
 
-3. AWS glue job
+---
 
-Обрабатывает данные следующим образом:
+## 📁 Data Structure
 
-Чтение таблицы raw как DynamicFrame
+**Raw Input (CSV):**
+- `UserId` — Unique user identifier  
+- `TransactionId` — Unique transaction identifier  
+- `TransactionTime` — Date and time of the transaction  
+- `ItemCode` — Item code  
+- `ItemDescription` — Description of the item  
+- `NumberOfItemPurchased` — Number of items purchased  
+- `CostPerItem` — Cost per item  
+- `Country` — Country where the item was purchased  
 
-Приведение столбцов к нужным типам (например, userid из string в int)
+**Processed Output (Parquet):**
+- All columns are cleaned and standardized  
+- Data types are casted correctly  
+- A new column `TotalCost = NumberOfItemPurchased * CostPerItem` is added  
 
-Очистка данных (удаление строк с ошибками и пропусками)
+---
 
-Сохранение результата в формате Parquet в S3 (/processed/)
+## 🔄 ETL Process
 
-4. Amazon Athena
+1. **Upload CSV** to the `raw/` directory in S3  
+2. **Glue Crawler** detects schema and creates a Glue catalog table  
+3. **Glue Job** performs transformations:
+   - Standardizes column names  
+   - Casts correct data types  
+   - Fills or removes missing values  
+   - Adds calculated fields  
+4. **Result** is saved to `processed/` in Parquet format  
+5. **Athena** queries the processed data with SQL  
 
-Позволяет выполнять SQL-запросы к данным, сохранённым в S3. Используется для построения отчётов и аналитики.
+---
 
-Пример сценария использования
-Загружается файл transactions.csv в s3://my-etl-pipeline-bucket-512/raw/
+## 🧊 Archiving Unused Data
 
-Запускается Glue Crawler, создающая таблицу raw
+To reduce storage costs, rarely accessed or old processed data is moved to **Amazon S3 Glacier**.
 
-Запускается Glue Job transform_job, который сохраняет обработанные данные в s3://my-etl-pipeline-bucket-512/processed/
+### How it works:
+- Processed files in `processed/` that haven’t been accessed in over 30 days are automatically transitioned to Glacier using an [S3 Lifecycle Policy](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)  
+- Retrieval is possible when needed, with delays ranging from minutes to hours
 
-В Athena создаётся таблица processed с указанием пути к processed/
+> Example lifecycle policy JSON is available in `/s3-lifecycle/lifecycle-policy.json`.
 
-Выполняется запрос, например:
+---
 
-sql
-SELECT country, COUNT(*) AS total_transactions
-FROM processed
-GROUP BY country
-ORDER BY total_transactions DESC;
+## 🔐 Security and Cost Optimization
+
+- IAM role for Glue is restricted to necessary actions only  
+- Using **Parquet** format reduces data scanned and lowers Athena query costs  
+- **S3 Lifecycle Policies** help automatically transition old or unused data to **S3 Glacier**, reducing long-term storage costs  
+- **AWS Budgets** and alerts help monitor spending in real time  
+- In the future, additional data classification and archiving strategies can be implemented to send rarely accessed processed data to **S3 Glacier**, especially useful for historical or compliance-driven data retention
 
 
-Проблемы и их решения
-RESOURCE_NOT_FOUND_ERROR — возникает, если таблица raw ещё не создана. Решение: запустить Glue Crawler.
+---
 
-UNRESOLVED_COLUMN — ошибка в названии столбца. Важно использовать точные имена из схемы, например numberofitemspurchased, а не NumberOfItemPurchased.
+## 📊 Sample Analytics
 
-NameError: DynamicFrame — отсутствует импорт библиотеки. Решение: добавить from awsglue.dynamicframe import DynamicFrame.
+- Top purchased items by country  
+- Average spend per user  
+- Purchase trends over time  
+- Anomaly detection in transactions  
 
-PERMISSION_ERROR — ошибка доступа при записи в S3. Решение: проверить IAM роль Glue и добавить политику s3:PutObject.
+---
 
-HIVE_BAD_DATA: Not valid Parquet — ошибка возникает, если в каталоге находятся CSV-файлы, а Athena ожидает .parquet. Решение: убедиться, что Athena работает только с обработанными .parquet-файлами, и указать правильный путь к ним.
+## ✅ Benefits
 
-Заключение
-Этот пайплайн позволяет эффективно автоматизировать обработку больших объёмов данных, минимизируя ручную работу и повышая надёжность. Использование Glue и Athena делает возможным масштабирование, быструю трансформацию данных и мгновенный доступ к аналитике через SQL.
+- Fully automated and scalable ETL workflow  
+- Fast access to cleaned and queried data  
+- Minimal operational overhead  
+- Cost-effective and extendable  
+
+---
+
+## 📝 Requirements
+
+- AWS account  
+- IAM roles for Glue and Athena with appropriate S3 access  
+- Raw CSV data in S3  
+
+---
+
+## 📂 Project Structure
+
+
+
